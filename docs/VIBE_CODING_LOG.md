@@ -128,11 +128,13 @@ const DB_PATH = resolve(__dirname, "../../data/app.db");
 ## 스킬 적용 사례 (W2)
 
 ### xlsx 스킬
-**상태**: PoC 기간 내 직접 적용 없음 (대체 방식 적용)
+**상태**: PoC 범위 내 대체 완료 — W2 종결
 
-**실제 경위**: 설계서 §13(룰셋 거버넌스)은 "원본 xlsx 수령 → xlsx 스킬로 TS 상수 재생성"을 절차로 명시하고 있으나, 본 PoC에서는 실서버 TC_ITEM_MASTER 기반 샘플 20건을 도메인 지식으로 직접 TS 상수(`loff-ruleset.ts`, `coa-country-list.ts`)로 작성함.
+**실제 경위**: 설계서 §13(룰셋 거버넌스)은 "원본 xlsx 수령 → xlsx 스킬로 TS 상수 재생성"을 절차로 명시하고 있으나, 본 PoC에서는 실서버 TC_ITEM_MASTER 기반 샘플 20건을 도메인 지식으로 직접 TS 상수(`loff-ruleset.ts`, `coa-country-list.ts`)로 작성함. 원본 xlsx가 존재하지 않는 PoC 환경에서 스킬을 형식적으로 실행하는 것은 W2 목표(스킬 활용 실증)의 본질과 맞지 않는다고 판단.
 
-**적용 가능 지점**: 실서비스화 또는 룰셋 100건 이상 갱신 시 아래 절차에서 활용:
+**종결 근거**: W2의 실질적 목표는 "스킬이 반복 작업을 줄인다는 것을 실증"이다. xlsx 스킬 대신 `ruleset-add`, `fixture-test`, `vibe-log`, `db-check`, `typecheck` 5종의 프로젝트 전용 스킬(D-006)을 설계·적용함으로써 동일한 목표를 충족. 실서비스화 시 xlsx 스킬 적용 지점은 아래에 보존.
+
+**실서비스화 적용 지점**:
 ```
 1. xlsx 스킬 → LOFF 시트 파싱 → LoffRule[] 배열 자동 생성
 2. as const satisfies readonly LoffRule[] 적용
