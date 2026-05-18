@@ -1,5 +1,60 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { WizardDispatch, WizardState } from "../fsm";
+
+interface DropZoneProps {
+  label: string;
+  file: File | null;
+  onFile: (f: File) => void;
+  onRemove: () => void;
+}
+
+function DropZone({ label, file, onFile, onRemove }: DropZoneProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const dropped = e.dataTransfer.files[0];
+    if (dropped) onFile(dropped);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-sm font-medium text-gray-700">{label}</p>
+      {file ? (
+        <div className="flex items-center justify-between rounded-lg border border-green-300 bg-green-50 px-3 py-2">
+          <span className="truncate text-sm text-green-700">{file.name}</span>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="ml-2 shrink-0 text-xs text-gray-400 hover:text-red-500"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => inputRef.current?.click()}
+          className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-5 transition-colors ${
+            dragging ? "border-blue-400 bg-blue-50" : "border-gray-300 bg-gray-50 hover:border-blue-300 hover:bg-blue-50"
+          }`}
+        >
+          <span className="text-xs text-gray-400">파일을 드래그하거나 클릭해서 선택</span>
+          <input
+            ref={inputRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   state: WizardState;
@@ -8,27 +63,27 @@ interface Props {
 
 export default function UploadStep({ state, dispatch }: Props) {
   const docs = state.verdict?.requiredDocs ?? [];
-  const [checked, setChecked] = useState<Record<string, boolean>>(
-    Object.fromEntries(docs.map((d) => [d, false]))
+  const [files, setFiles] = useState<Record<string, File | null>>(
+    Object.fromEntries(docs.map((d) => [d, null]))
   );
 
-  const allChecked = docs.length === 0 || docs.every((d) => checked[d]);
+  const allAttached = docs.length === 0 || docs.every((d) => files[d] !== null);
 
-  const toggle = (doc: string) =>
-    setChecked((prev) => ({ ...prev, [doc]: !prev[doc] }));
+  const setFile = (doc: string, f: File) => setFiles((prev) => ({ ...prev, [doc]: f }));
+  const removeFile = (doc: string) => setFiles((prev) => ({ ...prev, [doc]: null }));
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-800">필수 서류 확인</h2>
+      <h2 className="text-xl font-semibold text-gray-800">필수 서류 첨부</h2>
 
       {docs.length === 0 ? (
         <div className="rounded-lg border border-green-200 bg-green-50 p-4">
           <p className="text-sm text-green-700">이 신청에는 별도 첨부 서류가 없습니다.</p>
         </div>
       ) : (
-        <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+        <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-sm text-gray-600">아래 서류를 모두 확인·준비한 후 다음 단계로 진행하세요.</p>
+            <p className="text-sm text-gray-600">아래 서류를 모두 첨부한 후 다음 단계로 진행하세요.</p>
             {state.verdict?.documentTrack === "catch_certificate" && (
               <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">어획증명서 트랙</span>
             )}
@@ -36,23 +91,15 @@ export default function UploadStep({ state, dispatch }: Props) {
               <span className="rounded bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-600">COA 트랙</span>
             )}
           </div>
-          <ul className="space-y-2">
-            {docs.map((doc) => (
-              <li key={doc}>
-                <label className="flex cursor-pointer items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={!!checked[doc]}
-                    onChange={() => toggle(doc)}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className={`text-sm ${checked[doc] ? "text-gray-400 line-through" : "text-gray-800"}`}>
-                    {doc}
-                  </span>
-                </label>
-              </li>
-            ))}
-          </ul>
+          {docs.map((doc) => (
+            <DropZone
+              key={doc}
+              label={doc}
+              file={files[doc]}
+              onFile={(f) => setFile(doc, f)}
+              onRemove={() => removeFile(doc)}
+            />
+          ))}
         </div>
       )}
 
@@ -70,7 +117,7 @@ export default function UploadStep({ state, dispatch }: Props) {
         </button>
         <button
           type="button"
-          disabled={!allChecked}
+          disabled={!allAttached}
           onClick={() => dispatch({ type: "NEXT" })}
           className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
