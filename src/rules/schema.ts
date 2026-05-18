@@ -44,10 +44,13 @@ export const ListGradeEnum = z.enum(["L1", "L2", "L3"]);
 
 export const LoffRuleSchema = z.object({
   id: z.string().regex(/^R-LOFF-\d{4}$/, "R-LOFF-NNNN 형식"),
+  loffNo: z.number().int().positive(),              // TN_CA_LOFF_INFO.LOFF_NO
+  fisheryCd: z.string().length(2),                 // TN_CA_LOFF_INFO.FISHERY_CD (수역코드)
   method: LoffMethodEnum,
   species: LoffSpeciesEnum,
   region: LoffRegionEnum,
   loffId: z.string().regex(/^LOFF-[A-Z]{2}-[A-Z]{3}-[A-Z]{2}$/, "LOFF-XX-XXX-XX 형식"),
+  equalLoffIds: z.array(z.string()),               // TN_MMPA_CA_SPECIES.EQUAL_LOFF_ID_LIST
   effectiveFrom: isoDate,
   effectiveTo: isoDate.nullable(),
 });
@@ -64,6 +67,8 @@ export const CoaCountryRuleSchema = z.object({
 export const CoaItemRuleSchema = z.object({
   id: z.string().regex(/^I-\d{3}$/, "I-NNN 형식"),
   itemCd: z.string().min(1),
+  itemType: z.string().length(2),                  // TC_ITEM_MASTER.ITEM_TYPE (01:건 02:냉동 03:냉장 04:통조림)
+  itemTrtCd: z.string().length(2),                 // TC_ITEM_MASTER.ITEM_TRT_CD (01:원물 02:냉동 03:가공)
   itemNmKor: z.string().min(1),
   itemNmEng: z.string().min(1),
   scientificNm: z.string().min(1),
