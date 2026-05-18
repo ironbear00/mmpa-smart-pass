@@ -1,0 +1,70 @@
+import { Hono } from "hono";
+import { z } from "zod";
+import { repo } from "../db";
+
+const app = new Hono();
+
+const verdictSchema = z.object({
+  kind: z.string(),
+  loffId: z.string().optional(),
+  listGrade: z.string().optional(),
+  message: z.string(),
+  missing: z.array(z.string()).optional(),
+  requiredDocs: z.array(z.string()).optional(),
+  matchedRuleId: z.string().optional(),
+  nextStepEnabled: z.boolean(),
+});
+
+const submitSchema = z.object({
+  branch: z.enum(["domestic", "import"]),
+  applicantNm: z.string().min(1, "신청인 이름 필수"),
+  formData: z.record(z.string()),
+  verdict: verdictSchema,
+});
+
+function genDocNo(): string {
+  const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const rand = String(Math.floor(Math.random() * 9000) + 1000);
+  return `MMPA-${datePart}-${rand}`;
+}
+
+// GET /api/applications
+app.get("/", async (c) => {
+  const rows = await repo.listApplications();
+  return c.json(rows);
+});
+
+// POST /api/applications/submit
+app.post("/submit", async (c) => {
+  let body: unknown;
+  try { body = await c.req.json(); }
+  catch { return c.json({ error: "요청 본문 파싱 오류" }, 400); }
+
+  const parsed = submitSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.flatten().fieldErrors }, 400);
+  }
+
+  const { branch, applicantNm, formData, verdict } = parsed.data;
+  const docNo = genDocNo();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { id } = await repo.insertApplication({
+    doc_no: docNo,
+    origin_type: branch === "domestic" ? "domestic" : "import",
+    applicant_nm: applicantNm,
+    applicant_dt: today,
+    verdict_snapshot: JSON.stringify(verdict),
+    species: {
+      loff_id: verdict.loffId ?? null,
+      item_cd: formData.itemCd ?? null,
+      country_origin: formData.countryCode ?? null,
+      country_process: formData.processingCountry ?? null,
+      fishing_gear: formData.method ?? null,
+    },
+  });
+
+  return c.json({ docNo, id }, 201);
+});
+
+export default app;

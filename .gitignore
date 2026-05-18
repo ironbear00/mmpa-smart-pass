@@ -1,0 +1,31 @@
+# dependencies
+/node_modules
+
+# build outputs
+/dist
+/build
+
+# database
+/data/app.db
+
+# pnpm
+.pnpm-debug.log*
+pnpm-debug.log*
+
+# env
+.env*
+
+# editor
+.DS_Store
+*.pem
+.idea/
+.vscode/
+
+# claude local settings
+.claude/settings.local.json
+
+# typescript
+*.tsbuildinfo
+
+# test coverage
+/coverage
