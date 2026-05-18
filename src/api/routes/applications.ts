@@ -15,11 +15,16 @@ const verdictSchema = z.object({
   nextStepEnabled: z.boolean(),
 });
 
+const itemSchema = z.object({
+  id: z.string(),
+  input: z.record(z.string()),
+  verdict: verdictSchema,
+});
+
 const submitSchema = z.object({
   branch: z.enum(["domestic", "import"]),
   applicantNm: z.string().min(1, "신청인 이름 필수"),
-  formData: z.record(z.string()),
-  verdict: verdictSchema,
+  items: z.array(itemSchema).min(1, "최소 1건 이상"),
 });
 
 function genDocNo(): string {
@@ -45,22 +50,23 @@ app.post("/submit", async (c) => {
     return c.json({ error: parsed.error.flatten().fieldErrors }, 400);
   }
 
-  const { branch, applicantNm, formData, verdict } = parsed.data;
+  const { branch, applicantNm, items } = parsed.data;
   const docNo = genDocNo();
   const today = new Date().toISOString().slice(0, 10);
+  const first = items[0];
 
   const { id } = await repo.insertApplication({
     doc_no: docNo,
     origin_type: branch === "domestic" ? "domestic" : "import",
     applicant_nm: applicantNm,
     applicant_dt: today,
-    verdict_snapshot: JSON.stringify(verdict),
+    verdict_snapshot: JSON.stringify(items),
     species: {
-      loff_id: verdict.loffId ?? null,
-      item_cd: formData.itemCd ?? null,
-      country_origin: formData.countryCode ?? null,
-      country_process: formData.processingCountry ?? null,
-      fishing_gear: formData.method ?? null,
+      loff_id: first.verdict.loffId ?? null,
+      item_cd: first.input.itemCd ?? null,
+      country_origin: first.input.countryCode ?? null,
+      country_process: first.input.processingCountry ?? null,
+      fishing_gear: first.input.method ?? null,
     },
   });
 

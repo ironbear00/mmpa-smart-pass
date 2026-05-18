@@ -11,18 +11,23 @@ export type WizardStep =
 
 export type Branch = "domestic" | "import";
 
+export interface ItemEntry {
+  id: string;
+  input: Record<string, string>;
+  verdict: Verdict;
+}
+
 export interface WizardState {
   step: WizardStep;
   branch: Branch | null;
-  verdict: Verdict | null;
-  formData: Record<string, string>;
+  items: ItemEntry[];
   docNo: string | null;
 }
 
 export type WizardAction =
   | { type: "SELECT_BRANCH"; branch: Branch }
-  | { type: "VERDICT_UPDATE"; verdict: Verdict }
-  | { type: "SET_FORM_DATA"; data: Record<string, string> }
+  | { type: "ITEM_UPSERT"; item: ItemEntry }
+  | { type: "ITEM_REMOVE"; id: string }
   | { type: "NEXT" }
   | { type: "BACK" }
   | { type: "SUBMIT_SUCCESS"; docNo: string }
@@ -42,29 +47,33 @@ const STEP_ORDER: WizardStep[] = [
 export const initialState: WizardState = {
   step: "SELECT_TYPE",
   branch: null,
-  verdict: null,
-  formData: {},
+  items: [],
   docNo: null,
 };
 
-export function wizardReducer(
-  state: WizardState,
-  action: WizardAction
-): WizardState {
+export function wizardReducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case "SELECT_BRANCH":
-      return { ...state, step: "INPUT_RULE", branch: action.branch, verdict: null, formData: {} };
+      return { ...state, step: "INPUT_RULE", branch: action.branch, items: [] };
 
-    case "VERDICT_UPDATE":
-      return { ...state, verdict: action.verdict };
+    case "ITEM_UPSERT": {
+      const exists = state.items.some((i) => i.id === action.item.id);
+      const items = exists
+        ? state.items.map((i) => (i.id === action.item.id ? action.item : i))
+        : [...state.items, action.item];
+      return { ...state, items };
+    }
 
-    case "SET_FORM_DATA":
-      return { ...state, formData: action.data };
+    case "ITEM_REMOVE":
+      return { ...state, items: state.items.filter((i) => i.id !== action.id) };
 
     case "NEXT": {
       const idx = STEP_ORDER.indexOf(state.step);
       if (idx === -1 || idx === STEP_ORDER.length - 1) return state;
-      if (state.step === "INPUT_RULE" && !state.verdict?.nextStepEnabled) return state;
+      if (
+        state.step === "INPUT_RULE" &&
+        (state.items.length === 0 || !state.items.every((i) => i.verdict.nextStepEnabled))
+      ) return state;
       return { ...state, step: STEP_ORDER[idx + 1] };
     }
 

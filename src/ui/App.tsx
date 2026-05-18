@@ -92,20 +92,31 @@ export default function App() {
             {state.step === "SELECT_TYPE" && <BranchSelect dispatch={dispatch} />}
 
             {state.step === "INPUT_RULE" && state.branch === "domestic" && (
-              <DomesticStep dispatch={dispatch} onNext={() => dispatch({ type: "NEXT" })} />
+              <DomesticStep state={state} dispatch={dispatch} onNext={() => dispatch({ type: "NEXT" })} />
             )}
             {state.step === "INPUT_RULE" && state.branch === "import" && (
-              <ImportStep dispatch={dispatch} onNext={() => dispatch({ type: "NEXT" })} />
+              <ImportStep state={state} dispatch={dispatch} onNext={() => dispatch({ type: "NEXT" })} />
             )}
 
-            {state.step === "VALIDATED" && state.verdict && (
-              <div className="space-y-6 py-4 text-center">
-                <div className="text-5xl">✅</div>
-                <h2 className="text-xl font-semibold text-gray-800">검증 완료</h2>
-                <div className="flex justify-center"><VerdictBadge kind={state.verdict.kind} /></div>
-                <p className="text-sm text-gray-600">{state.verdict.message}</p>
-                {state.verdict.loffId && <p className="font-mono text-xs text-gray-400">LOFF ID: {state.verdict.loffId}</p>}
-                {state.verdict.listGrade && <p className="text-xs text-gray-500">관리등급: {state.verdict.listGrade}</p>}
+            {state.step === "VALIDATED" && state.items.length > 0 && (
+              <div className="space-y-6 py-4">
+                <div className="text-center">
+                  <div className="text-5xl">✅</div>
+                  <h2 className="mt-3 text-xl font-semibold text-gray-800">검증 완료</h2>
+                  <p className="mt-1 text-sm text-gray-500">{state.items.length}건 전체 신청 가능</p>
+                </div>
+                <div className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                  {state.items.map((item, idx) => (
+                    <div key={item.id} className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm text-gray-500">항목 #{idx + 1}</span>
+                      <div className="flex items-center gap-2">
+                        <VerdictBadge kind={item.verdict.kind} />
+                        {item.verdict.loffId && <span className="font-mono text-xs text-gray-400">{item.verdict.loffId}</span>}
+                        {item.verdict.listGrade && <span className="text-xs text-gray-500">{item.verdict.listGrade}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 <div className="flex justify-center gap-3 pt-2">
                   <button onClick={() => dispatch({ type: "BACK" })} className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">수정</button>
                   <button onClick={() => dispatch({ type: "NEXT" })} className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700">서류 확인 →</button>

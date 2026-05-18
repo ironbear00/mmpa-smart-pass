@@ -25,13 +25,7 @@ function DropZone({ label, file, onFile, onRemove }: DropZoneProps) {
       {file ? (
         <div className="flex items-center justify-between rounded-lg border border-green-300 bg-green-50 px-3 py-2">
           <span className="truncate text-sm text-green-700">{file.name}</span>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="ml-2 shrink-0 text-xs text-gray-400 hover:text-red-500"
-          >
-            ✕
-          </button>
+          <button type="button" onClick={onRemove} className="ml-2 shrink-0 text-xs text-gray-400 hover:text-red-500">✕</button>
         </div>
       ) : (
         <div
@@ -44,30 +38,25 @@ function DropZone({ label, file, onFile, onRemove }: DropZoneProps) {
           }`}
         >
           <span className="text-xs text-gray-400">파일을 드래그하거나 클릭해서 선택</span>
-          <input
-            ref={inputRef}
-            type="file"
-            className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }}
-          />
+          <input ref={inputRef} type="file" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
         </div>
       )}
     </div>
   );
 }
 
-interface Props {
-  state: WizardState;
-  dispatch: WizardDispatch;
-}
+interface Props { state: WizardState; dispatch: WizardDispatch }
 
 export default function UploadStep({ state, dispatch }: Props) {
-  const docs = state.verdict?.requiredDocs ?? [];
+  const allDocs = [...new Set(state.items.flatMap((i) => i.verdict.requiredDocs ?? []))];
+  const tracks = [...new Set(state.items.map((i) => i.verdict.documentTrack).filter(Boolean))] as string[];
+
   const [files, setFiles] = useState<Record<string, File | null>>(
-    Object.fromEntries(docs.map((d) => [d, null]))
+    Object.fromEntries(allDocs.map((d) => [d, null]))
   );
 
-  const allAttached = docs.length === 0 || docs.every((d) => files[d] !== null);
+  const allAttached = allDocs.length === 0 || allDocs.every((d) => files[d] !== null);
 
   const setFile = (doc: string, f: File) => setFiles((prev) => ({ ...prev, [doc]: f }));
   const removeFile = (doc: string) => setFiles((prev) => ({ ...prev, [doc]: null }));
@@ -76,7 +65,7 @@ export default function UploadStep({ state, dispatch }: Props) {
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-gray-800">필수 서류 첨부</h2>
 
-      {docs.length === 0 ? (
+      {allDocs.length === 0 ? (
         <div className="rounded-lg border border-green-200 bg-green-50 p-4">
           <p className="text-sm text-green-700">이 신청에는 별도 첨부 서류가 없습니다.</p>
         </div>
@@ -84,21 +73,16 @@ export default function UploadStep({ state, dispatch }: Props) {
         <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm text-gray-600">아래 서류를 모두 첨부한 후 다음 단계로 진행하세요.</p>
-            {state.verdict?.documentTrack === "catch_certificate" && (
+            {tracks.includes("catch_certificate") && (
               <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">어획증명서 트랙</span>
             )}
-            {state.verdict?.documentTrack === "coa" && (
+            {tracks.includes("coa") && (
               <span className="rounded bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-600">COA 트랙</span>
             )}
           </div>
-          {docs.map((doc) => (
-            <DropZone
-              key={doc}
-              label={doc}
-              file={files[doc]}
-              onFile={(f) => setFile(doc, f)}
-              onRemove={() => removeFile(doc)}
-            />
+          {allDocs.map((doc) => (
+            <DropZone key={doc} label={doc} file={files[doc]}
+              onFile={(f) => setFile(doc, f)} onRemove={() => removeFile(doc)} />
           ))}
         </div>
       )}
@@ -108,19 +92,10 @@ export default function UploadStep({ state, dispatch }: Props) {
       </p>
 
       <div className="flex justify-between pt-2">
-        <button
-          type="button"
-          onClick={() => dispatch({ type: "BACK" })}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
-        >
-          이전
-        </button>
-        <button
-          type="button"
-          disabled={!allAttached}
-          onClick={() => dispatch({ type: "NEXT" })}
-          className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
-        >
+        <button type="button" onClick={() => dispatch({ type: "BACK" })}
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">이전</button>
+        <button type="button" disabled={!allAttached} onClick={() => dispatch({ type: "NEXT" })}
+          className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40">
           다음 단계
         </button>
       </div>
